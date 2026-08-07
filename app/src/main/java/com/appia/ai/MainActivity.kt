@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.appia.ai.ui.ChatScreen
 import com.appia.ai.ui.ChatViewModel
+import com.appia.ai.ui.PermissionGuideScreen
 import com.appia.ai.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
@@ -36,6 +37,7 @@ class MainActivity : ComponentActivity() {
                         composable("chat") {
                             ChatScreen(
                                 onNavigateToSettings = { navController.navigate("settings") },
+                                onNavigateToPermission = { navController.navigate("permission") },
                                 viewModel = viewModel
                             )
                         }
@@ -43,6 +45,11 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(
                                 onNavigateBack = { navController.popBackStack() },
                                 viewModel = viewModel
+                            )
+                        }
+                        composable("permission") {
+                            PermissionGuideScreen(
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
                     }

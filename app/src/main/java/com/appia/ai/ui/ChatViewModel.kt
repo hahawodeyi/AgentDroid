@@ -7,6 +7,7 @@ import com.appia.ai.data.SettingsRepository
 import com.appia.ai.llm.ChatMessage
 import com.appia.ai.llm.ModelConfig
 import com.appia.ai.llm.ModelRegistry
+import com.appia.ai.service.ServiceBridge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,8 @@ data class ChatUiState(
     val isStreaming: Boolean = false,
     val streamingContent: String = "",
     val activeConfig: ModelConfig? = null,
-    val error: String? = null
+    val error: String? = null,
+    val isAccessibilityReady: Boolean = false
 )
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -97,6 +99,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    fun checkAccessibilityReady() {
+        _uiState.value = _uiState.value.copy(isAccessibilityReady = ServiceBridge.isReady.value)
     }
 
     fun refreshActiveConfig() {
