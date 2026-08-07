@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AgentDroid</string>
+    <string name="accessibility_service_description">AgentDroid 需要无障碍权限来读取屏幕元素并执行操作</string>
 </resources>

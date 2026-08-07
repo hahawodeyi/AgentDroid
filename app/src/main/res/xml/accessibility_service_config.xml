@@ -5,5 +5,5 @@
     android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"
     android:canRetrieveWindowContent="true"
-    android:description="AgentDroid 需要无障碍权限来读取屏幕元素并执行操作"
+    android:description="@string/accessibility_service_description"
     android:notificationTimeout="100" />
