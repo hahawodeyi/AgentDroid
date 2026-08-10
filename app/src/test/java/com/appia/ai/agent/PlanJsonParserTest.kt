@@ -83,4 +83,32 @@ class PlanJsonParserTest {
         val plan = PlanJsonParser.parse(json)
         assertNotNull(plan)
     }
+
+    @Test
+    fun parse_long_press() {
+        val json = """{"goal":"test","steps":[{"action":"long_press","target":"图片","description":"长按图片","duration":2000}]}"""
+        val plan = PlanJsonParser.parse(json)
+        assertNotNull(plan)
+        assert(plan!!.steps[0].action is AgentAction.LongPress)
+        assertEquals(2000, (plan.steps[0].action as AgentAction.LongPress).durationMs)
+    }
+
+    @Test
+    fun parse_swipe_with_coordinates() {
+        val json = """{"goal":"test","steps":[{"action":"swipe","startX":100,"startY":500,"endX":100,"endY":100,"description":"上滑"}]}"""
+        val plan = PlanJsonParser.parse(json)
+        assertNotNull(plan)
+        val action = plan!!.steps[0].action as AgentAction.Swipe
+        assertEquals(100, action.startX)
+        assertEquals(500, action.startY)
+    }
+
+    @Test
+    fun parse_launch_app() {
+        val json = """{"goal":"test","steps":[{"action":"launch_app","packageName":"com.tencent.mm","description":"打开微信"}]}"""
+        val plan = PlanJsonParser.parse(json)
+        assertNotNull(plan)
+        val action = plan!!.steps[0].action as AgentAction.LaunchApp
+        assertEquals("com.tencent.mm", action.packageName)
+    }
 }

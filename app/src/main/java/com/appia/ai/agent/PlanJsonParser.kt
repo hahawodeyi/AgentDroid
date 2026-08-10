@@ -14,7 +14,13 @@ private data class JsonStep(
     val text: String? = null,
     val direction: String? = null,
     val seconds: Float? = null,
-    val description: String = ""
+    val description: String = "",
+    val packageName: String? = null,
+    val startX: Int? = null,
+    val startY: Int? = null,
+    val endX: Int? = null,
+    val endY: Int? = null,
+    val duration: Long? = null
 )
 
 @Serializable
@@ -71,6 +77,20 @@ object PlanJsonParser {
                 AgentAction.Scroll(dir)
             }
             "wait" -> AgentAction.Wait(s.seconds ?: 1.0f)
+            "long_press", "longpress" -> {
+                AgentAction.LongPress(0, 0, s.duration ?: 1000)
+            }
+            "swipe" -> {
+                AgentAction.Swipe(
+                    s.startX ?: 500, s.startY ?: 1000,
+                    s.endX ?: 500, s.endY ?: 300,
+                    s.duration ?: 300
+                )
+            }
+            "launch", "launch_app", "open_app" -> {
+                val pkg = s.packageName ?: s.target ?: return null
+                AgentAction.LaunchApp(pkg)
+            }
             else -> return null
         }
         return ExecutionStep(
