@@ -21,4 +21,5 @@ interface ExecutionCallbacks {
     fun onStepDone(step: ExecutionStep, index: Int, success: Boolean)
     fun onProgress(message: String)
     suspend fun onTargetNotFound(target: String): Boolean
+    suspend fun onSafetyCheck(step: ExecutionStep, decision: SafetyDecision): Boolean
 }

@@ -8,6 +8,7 @@ import com.appia.ai.agent.ExecutionLoop
 import com.appia.ai.agent.ExecutionResult
 import com.appia.ai.agent.ExecutionStatus
 import com.appia.ai.agent.Intent
+import com.appia.ai.agent.SafetyDecision
 import com.appia.ai.agent.IntentClassifier
 import com.appia.ai.agent.TaskPlanner
 import com.appia.ai.data.SettingsRepository
@@ -200,6 +201,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
                 override suspend fun onTargetNotFound(target: String): Boolean {
                     return false
+                }
+                override suspend fun onSafetyCheck(step: ExecutionStep, decision: SafetyDecision): Boolean {
+                    return true
                 }
             })
 

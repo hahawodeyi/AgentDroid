@@ -4,6 +4,7 @@ import com.appia.ai.model.AgentAction
 import com.appia.ai.model.ExecutionStep
 import com.appia.ai.model.StepStatus
 import com.appia.ai.model.TaskPlan
+import com.appia.ai.agent.SafetyDecision
 import com.appia.ai.service.AgentAccessibilityService
 import kotlinx.coroutines.delay
 
@@ -47,6 +48,27 @@ class ExecutionLoop(
                     return buildResult(ExecutionStatus.FAILED, completed, steps, plan, "步骤 ${index + 1} 失败: 找不到 ${step.target}")
                 }
                 continue
+            }
+
+            // Safety check
+            val safetyDecision = SafetyGuard.check(steps[index])
+            when (safetyDecision) {
+                SafetyDecision.BLOCK -> {
+                    callbacks.onProgress("操作被安全拦截: ${step.description}")
+                    steps[index] = steps[index].copy(status = StepStatus.SKIPPED)
+                    callbacks.onStepDone(steps[index], index, false)
+                    return buildResult(ExecutionStatus.FAILED, completed, steps, plan, "步骤 ${index + 1} 被安全拦截")
+                }
+                SafetyDecision.CONFIRM -> {
+                    callbacks.onProgress("需要确认: ${step.description}")
+                    val approved = callbacks.onSafetyCheck(steps[index], safetyDecision)
+                    if (!approved) {
+                        steps[index] = steps[index].copy(status = StepStatus.SKIPPED)
+                        callbacks.onStepDone(steps[index], index, false)
+                        continue
+                    }
+                }
+                SafetyDecision.ALLOW -> { /* proceed normally */ }
             }
 
             val success = try {
