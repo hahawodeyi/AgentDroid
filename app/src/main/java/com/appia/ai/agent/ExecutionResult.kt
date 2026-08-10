@@ -22,4 +22,5 @@ interface ExecutionCallbacks {
     fun onProgress(message: String)
     suspend fun onTargetNotFound(target: String): Boolean
     suspend fun onSafetyCheck(step: ExecutionStep, decision: SafetyDecision): Boolean
+    suspend fun onPopupDetected(popup: PopupInfo): Boolean
 }

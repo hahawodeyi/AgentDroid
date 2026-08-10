@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.appia.ai.agent.ExecutionCallbacks
+import com.appia.ai.agent.PopupInfo
 import com.appia.ai.agent.ExecutionLoop
 import com.appia.ai.agent.ExecutionResult
 import com.appia.ai.agent.ExecutionStatus
@@ -209,6 +210,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     return false
                 }
                 override suspend fun onSafetyCheck(step: ExecutionStep, decision: SafetyDecision): Boolean {
+                    return true
+                }
+                override suspend fun onPopupDetected(popup: PopupInfo): Boolean {
                     return true
                 }
             })
