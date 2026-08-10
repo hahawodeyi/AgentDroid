@@ -9,8 +9,11 @@ sealed class AgentAction {
     data class Input(val text: String) : AgentAction()
     object Back : AgentAction()
     object Home : AgentAction()
-    data class Scroll(val direction: Direction) : AgentAction()
-    data class Wait(val seconds: Float) : AgentAction()
+   data class Scroll(val direction: Direction) : AgentAction()
+   data class Wait(val seconds: Float) : AgentAction()
+    data class LongPress(val x: Int, val y: Int, val durationMs: Long = 1000) : AgentAction()
+    data class Swipe(val startX: Int, val startY: Int, val endX: Int, val endY: Int, val durationMs: Long = 300) : AgentAction()
+    data class LaunchApp(val packageName: String) : AgentAction()
 
     val actionName: String
         get() = when (this) {
@@ -20,5 +23,8 @@ sealed class AgentAction {
             is Home -> "home"
             is Scroll -> "scroll"
             is Wait -> "wait"
+            is LongPress -> "long_press"
+            is Swipe -> "swipe"
+            is LaunchApp -> "launch_app"
         }
 }

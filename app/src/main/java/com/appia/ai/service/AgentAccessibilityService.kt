@@ -3,6 +3,7 @@ package com.appia.ai.service
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.content.Intent
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -52,6 +53,9 @@ class AgentAccessibilityService : AccessibilityService() {
             is AgentAction.Home -> performGlobalAction(GLOBAL_ACTION_HOME)
             is AgentAction.Scroll -> performScroll(action.direction)
             is AgentAction.Wait -> { delay((action.seconds * 1000).toLong()); true }
+            is AgentAction.LongPress -> performLongPress(action.x, action.y, action.durationMs)
+            is AgentAction.Swipe -> performSwipe(action.startX, action.startY, action.endX, action.endY, action.durationMs)
+            is AgentAction.LaunchApp -> performLaunchApp(action.packageName)
         }
     }
 
@@ -87,9 +91,35 @@ class AgentAccessibilityService : AccessibilityService() {
             moveTo(startX.toFloat(), startY.toFloat())
             lineTo(endX.toFloat(), endY.toFloat())
         }
+       val gesture = GestureDescription.Builder()
+           .addStroke(GestureDescription.StrokeDescription(path, 0, 300))
+           .build()
+       return dispatchGesture(gesture, null, null)
+   }
+
+    private fun performLongPress(x: Int, y: Int, durationMs: Long): Boolean {
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 300))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
             .build()
         return dispatchGesture(gesture, null, null)
+    }
+
+    private fun performSwipe(startX: Int, startY: Int, endX: Int, endY: Int, durationMs: Long): Boolean {
+        val path = Path().apply {
+            moveTo(startX.toFloat(), startY.toFloat())
+            lineTo(endX.toFloat(), endY.toFloat())
+        }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    private fun performLaunchApp(packageName: String): Boolean {
+        val launcher = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        launcher.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(launcher)
+        return true
     }
 }
