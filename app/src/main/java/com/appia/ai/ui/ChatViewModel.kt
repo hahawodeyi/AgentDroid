@@ -17,6 +17,7 @@ import com.appia.ai.llm.ModelConfig
 import com.appia.ai.llm.ModelRegistry
 import com.appia.ai.model.ExecutionStep
 import com.appia.ai.model.TaskPlan
+import com.appia.ai.service.FloatingOverlayService
 import com.appia.ai.service.ServiceBridge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,7 @@ data class ChatUiState(
     val activeConfig: ModelConfig? = null,
     val error: String? = null,
     val isAccessibilityReady: Boolean = false,
+    val canDrawOverlays: Boolean = false,
     val pendingPlan: TaskPlan? = null,
     val executionResult: ExecutionResult? = null,
     val isExecuting: Boolean = false
@@ -178,6 +180,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val loop = ExecutionLoop(service)
         executionLoop = loop
 
+        if (FloatingOverlayService.canDrawOverlays(getApplication())) {
+            FloatingOverlayService.start(getApplication(), plan.steps.size)
+        }
+
         viewModelScope.launch {
             val result = loop.execute(plan, object : ExecutionCallbacks {
                 override fun onStepStart(step: ExecutionStep, index: Int) {
@@ -207,6 +213,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
             })
 
+            FloatingOverlayService.stop(getApplication())
+
             val statusText = when (result.status) {
                 ExecutionStatus.SUCCESS -> "✅ ${result.summary}"
                 ExecutionStatus.PARTIAL -> "⚠️ ${result.summary}"
@@ -230,7 +238,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopExecution() {
         executionLoop?.stop()
+        FloatingOverlayService.stop(getApplication())
         _uiState.value = _uiState.value.copy(isExecuting = false)
+    }
+
+    fun pauseExecution() {
+        executionLoop?.pause()
+    }
+
+    fun resumeExecution() {
+        executionLoop?.resume()
     }
 
     fun clearError() {
@@ -239,6 +256,12 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun checkAccessibilityReady() {
         _uiState.value = _uiState.value.copy(isAccessibilityReady = ServiceBridge.isReady.value)
+    }
+
+    fun checkOverlayPermission() {
+        _uiState.value = _uiState.value.copy(
+            canDrawOverlays = FloatingOverlayService.canDrawOverlays(getApplication())
+        )
     }
 
     fun refreshActiveConfig() {

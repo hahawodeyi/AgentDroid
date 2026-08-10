@@ -52,6 +52,7 @@ fun ChatScreen(
 
     LaunchedEffect(Unit) {
         viewModel.checkAccessibilityReady()
+        viewModel.checkOverlayPermission()
     }
 
     LaunchedEffect(state.messages.size, state.streamingContent) {
@@ -104,6 +105,15 @@ fun ChatScreen(
             if (!state.isAccessibilityReady) {
                 Text(
                     "无障碍服务未开启",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                )
+            }
+
+            if (!state.canDrawOverlays) {
+                Text(
+                    "悬浮窗权限未开启",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)

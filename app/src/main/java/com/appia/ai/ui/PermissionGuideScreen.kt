@@ -65,6 +65,23 @@ fun PermissionGuideScreen(
             }) {
                 Text("前往无障碍设置")
             }
+
+            Text(
+                "悬浮窗权限",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                "AgentDroid 需要悬浮窗权限来显示执行进度和控制按钮。\n请点击下方按钮授权",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Button(onClick = {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(intent)
+            }) {
+                Text("授权悬浮窗权限")
+            }
         }
     }
 }
