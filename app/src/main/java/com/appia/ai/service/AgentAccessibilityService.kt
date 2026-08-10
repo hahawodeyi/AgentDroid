@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Build
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -11,6 +13,9 @@ import com.appia.ai.model.AgentAction
 import com.appia.ai.model.Direction
 import com.appia.ai.model.ScreenElement
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.Executors
+import kotlin.coroutines.resume
 
 class AgentAccessibilityService : AccessibilityService() {
 
@@ -43,6 +48,28 @@ class AgentAccessibilityService : AccessibilityService() {
 
     fun findElement(target: String): ScreenElement? {
         return ElementMatcher.find(target, getScreenElements())
+    }
+
+    suspend fun captureScreen(): Bitmap? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        return suspendCancellableCoroutine { cont ->
+            takeScreenshot(android.view.Display.DEFAULT_DISPLAY,
+                Executors.newSingleThreadExecutor(),
+                object : TakeScreenshotCallback {
+                    override fun onSuccess(result: ScreenshotResult) {
+                        val hardwareBuffer = result.hardwareBuffer
+                        val bitmap = hardwareBuffer?.let {
+                            Bitmap.wrapHardwareBuffer(it, result.colorSpace)
+                        }
+                        hardwareBuffer?.close()
+                        cont.resume(bitmap)
+                    }
+                    override fun onFailure(error: Int) {
+                        cont.resume(null)
+                    }
+                }
+            )
+        }
     }
 
     suspend fun executeAction(action: AgentAction): Boolean {

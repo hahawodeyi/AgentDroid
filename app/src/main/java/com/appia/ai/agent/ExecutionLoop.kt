@@ -5,12 +5,14 @@ import com.appia.ai.model.ExecutionStep
 import com.appia.ai.model.StepStatus
 import com.appia.ai.model.TaskPlan
 import com.appia.ai.agent.SafetyDecision
+import com.appia.ai.llm.ModelConfig
 import com.appia.ai.service.AgentAccessibilityService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
 class ExecutionLoop(
-    private val service: AgentAccessibilityService
+    private val service: AgentAccessibilityService,
+    private val config: ModelConfig? = null
 ) {
     @Volatile
     private var isPaused = false
@@ -19,6 +21,7 @@ class ExecutionLoop(
     private var isCancelled = false
 
     private var consecutiveFailures = 0
+    private val screenshotFallback = if (config != null) ScreenshotFallback(service) else null
 
     suspend fun execute(
         plan: TaskPlan,
@@ -156,13 +159,28 @@ class ExecutionLoop(
         return buildResult(status, completed, steps, plan, "执行完成")
     }
 
-    private fun resolveTarget(step: ExecutionStep): AgentAction? {
+    private suspend fun resolveTarget(step: ExecutionStep): AgentAction? {
         val target = step.target ?: return step.action
-        val element = service.findElement(target) ?: return null
-        return when (val action = step.action) {
-            is AgentAction.Tap -> AgentAction.Tap(element.centerX, element.centerY)
-            else -> action
+        val element = service.findElement(target)
+        if (element != null) {
+            return when (val action = step.action) {
+                is AgentAction.Tap -> AgentAction.Tap(element.centerX, element.centerY)
+                else -> action
+            }
         }
+
+        // Screenshot fallback: if element not found in accessibility tree, try vision LLM
+        if (screenshotFallback != null && config != null && screenshotFallback.isAvailable(config)) {
+            val coords = screenshotFallback.findElementByScreenshot(target, config)
+            if (coords != null) {
+                return when (val action = step.action) {
+                    is AgentAction.Tap -> AgentAction.Tap(coords.first, coords.second)
+                    else -> action
+                }
+            }
+        }
+
+        return null
     }
 
     fun pause() { isPaused = true }

@@ -178,7 +178,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             isExecuting = true
         )
 
-        val loop = ExecutionLoop(service)
+        val config = settings.getActiveConfig()
+        val loop = ExecutionLoop(service, config)
         executionLoop = loop
 
         if (FloatingOverlayService.canDrawOverlays(getApplication())) {

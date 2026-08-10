@@ -11,7 +11,8 @@ data class ModelConfig(
     val model: String = "gpt-4o-mini",
     val temperature: Double = 0.7,
     val maxTokens: Int = 2048,
-    val isAnthropic: Boolean = false
+    val isAnthropic: Boolean = false,
+    val supportsVision: Boolean = false
 ) {
     val isValid: Boolean
         get() = apiKey.isNotBlank() && model.isNotBlank()
