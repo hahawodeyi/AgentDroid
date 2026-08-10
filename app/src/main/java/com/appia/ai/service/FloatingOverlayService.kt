@@ -26,8 +26,6 @@ class FloatingOverlayService : Service() {
     private var currentStep = 0
     private var stepDescription = ""
 
-    private var onPauseClick: (() -> Unit)? = null
-    private var onStopClick: (() -> Unit)? = null
     private var isPaused = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -54,10 +52,6 @@ class FloatingOverlayService : Service() {
         updatePanelText()
     }
 
-    fun setCallbacks(onPause: () -> Unit, onStop: () -> Unit) {
-        onPauseClick = onPause
-        onStopClick = onStop
-    }
 
     private fun getLayoutType(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -157,14 +151,14 @@ class FloatingOverlayService : Service() {
             setOnClickListener {
                 isPaused = !isPaused
                 this.text = if (isPaused) "恢复" else "暂停"
-                onPauseClick?.invoke()
+                if (isPaused) OverlayBridge.pause() else OverlayBridge.resume()
             }
         }
 
         val stopButton = Button(this).apply {
             text = "停止"
             setOnClickListener {
-                onStopClick?.invoke()
+                OverlayBridge.stop()
             }
         }
 

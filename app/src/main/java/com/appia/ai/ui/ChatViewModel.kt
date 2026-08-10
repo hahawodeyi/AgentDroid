@@ -5,11 +5,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.appia.ai.agent.ExecutionCallbacks
 import com.appia.ai.agent.PopupInfo
+import com.appia.ai.agent.SafetyDecision
+import com.appia.ai.service.OverlayBridge
+import kotlinx.coroutines.CompletableDeferred
 import com.appia.ai.agent.ExecutionLoop
 import com.appia.ai.agent.ExecutionResult
 import com.appia.ai.agent.ExecutionStatus
 import com.appia.ai.agent.Intent
-import com.appia.ai.agent.SafetyDecision
 import com.appia.ai.agent.IntentClassifier
 import com.appia.ai.agent.TaskPlanner
 import com.appia.ai.data.SettingsRepository
@@ -36,7 +38,8 @@ data class ChatUiState(
     val canDrawOverlays: Boolean = false,
     val pendingPlan: TaskPlan? = null,
     val executionResult: ExecutionResult? = null,
-    val isExecuting: Boolean = false
+    val isExecuting: Boolean = false,
+    val pendingSafetyCheck: Pair<ExecutionStep, SafetyDecision>? = null
 )
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -51,6 +54,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val taskPlanner = TaskPlanner()
     private var executionLoop: ExecutionLoop? = null
+    private var safetyDeferred: CompletableDeferred<Boolean>? = null
 
     fun updateInput(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text)
@@ -185,6 +189,11 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         if (FloatingOverlayService.canDrawOverlays(getApplication())) {
             FloatingOverlayService.start(getApplication(), plan.steps.size)
         }
+        OverlayBridge.bind(
+            onPause = { executionLoop?.pause() },
+            onResume = { executionLoop?.resume() },
+            onStop = { stopExecution() }
+        )
 
         viewModelScope.launch {
             val result = loop.execute(plan, object : ExecutionCallbacks {
@@ -211,13 +220,20 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     return false
                 }
                 override suspend fun onSafetyCheck(step: ExecutionStep, decision: SafetyDecision): Boolean {
-                    return true
+                    val deferred = CompletableDeferred<Boolean>()
+                    safetyDeferred = deferred
+                    _uiState.value = _uiState.value.copy(pendingSafetyCheck = Pair(step, decision))
+                    val result = deferred.await()
+                    _uiState.value = _uiState.value.copy(pendingSafetyCheck = null)
+                    safetyDeferred = null
+                    return result
                 }
                 override suspend fun onPopupDetected(popup: PopupInfo): Boolean {
                     return true
                 }
             })
 
+            OverlayBridge.unbind()
             FloatingOverlayService.stop(getApplication())
 
             val statusText = when (result.status) {
@@ -237,12 +253,21 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun confirmSafetyCheck() {
+        safetyDeferred?.complete(true)
+    }
+
+    fun denySafetyCheck() {
+        safetyDeferred?.complete(false)
+    }
+
     fun cancelPlan() {
         _uiState.value = _uiState.value.copy(pendingPlan = null)
     }
 
     fun stopExecution() {
         executionLoop?.stop()
+        OverlayBridge.unbind()
         FloatingOverlayService.stop(getApplication())
         _uiState.value = _uiState.value.copy(isExecuting = false)
     }

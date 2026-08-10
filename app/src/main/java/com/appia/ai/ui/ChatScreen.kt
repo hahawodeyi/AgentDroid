@@ -219,6 +219,15 @@ fun ChatScreen(
                 }
             }
         }
+
+        state.pendingSafetyCheck?.let { (step, decision) ->
+            SafetyConfirmDialog(
+                step = step,
+                decision = decision,
+                onConfirm = viewModel::confirmSafetyCheck,
+                onDeny = viewModel::denySafetyCheck
+            )
+        }
     }
 }
 
