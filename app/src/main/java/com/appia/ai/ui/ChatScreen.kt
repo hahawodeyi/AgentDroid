@@ -25,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -141,6 +142,35 @@ fun ChatScreen(
                         }
                     }
                 }
+                state.pendingPlan?.let { plan ->
+                    item {
+                        PlanConfirmCard(
+                            plan = plan,
+                            onConfirm = viewModel::confirmPlan,
+                            onCancel = viewModel::cancelPlan
+                        )
+                    }
+                }
+            }
+
+            if (state.isExecuting) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        state.streamingContent,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(onClick = viewModel::stopExecution) {
+                        Text("停止")
+                    }
+                }
             }
 
             state.error?.let { err ->
@@ -169,7 +199,7 @@ fun ChatScreen(
                 )
                 IconButton(
                     onClick = viewModel::send,
-                    enabled = state.inputText.isNotBlank() && !state.isStreaming
+                    enabled = state.inputText.isNotBlank() && !state.isStreaming && !state.isExecuting
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
