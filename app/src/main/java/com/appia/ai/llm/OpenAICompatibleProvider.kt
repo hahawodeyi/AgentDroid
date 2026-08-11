@@ -71,8 +71,19 @@ class OpenAICompatibleProvider : LLMProvider {
                 }
 
                 override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                    val errorMsg = response?.body?.string() ?: t?.message ?: "Unknown error"
-                    trySend("[ERROR] $errorMsg")
+                    val statusCode = response?.code ?: -1
+                    val errorBody = try { response?.body?.string() } catch (_: Exception) { null }
+                    val url = response?.request?.url?.toString() ?: "unknown"
+
+                    val hint = when (statusCode) {
+                        401, 403 -> "API Key 无效或无权限访问"
+                        404 -> "API 地址错误（404）。请检查 Base URL 是否正确。当前请求: $url"
+                        500, 502, 503 -> "服务器错误（$statusCode）。可能是模型名错误或服务暂时不可用"
+                        else -> "请求失败"
+                    }
+
+                    val detail = errorBody?.takeIf { it.isNotBlank() } ?: t?.message ?: "Unknown error"
+                    trySend("[ERROR] $hint。详情: $detail")
                     channel.close()
                 }
             })
