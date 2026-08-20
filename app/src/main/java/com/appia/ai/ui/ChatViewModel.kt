@@ -4,24 +4,32 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.appia.ai.agent.ExecutionCallbacks
+import com.appia.ai.agent.AgentEngine
+import com.appia.ai.agent.AgentMode
 import com.appia.ai.agent.PopupInfo
+import com.appia.ai.agent.PromptJsonEngine
 import com.appia.ai.agent.SafetyDecision
 import com.appia.ai.service.OverlayBridge
 import kotlinx.coroutines.CompletableDeferred
 import com.appia.ai.agent.ExecutionLoop
 import com.appia.ai.agent.ExecutionResult
 import com.appia.ai.agent.ExecutionStatus
-import com.appia.ai.agent.Intent
-import com.appia.ai.agent.IntentClassifier
-import com.appia.ai.agent.TaskPlanner
 import com.appia.ai.data.SettingsRepository
 import com.appia.ai.llm.ChatMessage
 import com.appia.ai.llm.ModelConfig
 import com.appia.ai.llm.ModelRegistry
 import com.appia.ai.model.ExecutionStep
 import com.appia.ai.model.TaskPlan
+import com.appia.ai.model.TraceStep
 import com.appia.ai.service.FloatingOverlayService
 import com.appia.ai.service.ServiceBridge
+import com.appia.ai.tool.PermissionChecker
+import com.appia.ai.tool.Tool
+import com.appia.ai.tool.ToolRegistry
+import com.appia.ai.tool.ToolSettingsStore
+import com.appia.ai.trigger.TriggerConfig
+import com.appia.ai.trigger.TriggerScheduler
+import com.appia.ai.trigger.TriggerStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +47,8 @@ data class ChatUiState(
     val pendingPlan: TaskPlan? = null,
     val executionResult: ExecutionResult? = null,
     val isExecuting: Boolean = false,
-    val pendingSafetyCheck: Pair<ExecutionStep, SafetyDecision>? = null
+    val pendingSafetyCheck: Pair<ExecutionStep, SafetyDecision>? = null,
+    val currentTrace: List<TraceStep> = emptyList()
 )
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -52,9 +61,60 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     val configs: StateFlow<List<ModelConfig>> = settings.configs
     val activeConfigId: StateFlow<String> = settings.activeConfigId
 
-    private val taskPlanner = TaskPlanner()
     private var executionLoop: ExecutionLoop? = null
     private var safetyDeferred: CompletableDeferred<Boolean>? = null
+
+    private val toolRegistry = ToolRegistry.createDefault()
+    private val toolStore = ToolSettingsStore(app)
+    private val appPrefs = app.getSharedPreferences("agentdroid_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _agentMode = MutableStateFlow(
+        AgentMode.fromKey(appPrefs.getString(KEY_AGENT_MODE, null))
+    )
+    val agentMode: StateFlow<AgentMode> = _agentMode.asStateFlow()
+
+    fun setAgentMode(mode: AgentMode) {
+        appPrefs.edit().putString(KEY_AGENT_MODE, mode.prefKey).apply()
+        _agentMode.value = mode
+    }
+
+    private val triggerStore = TriggerStore(app)
+
+    private val _triggerConfig = MutableStateFlow(triggerStore.load())
+    val triggerConfig: StateFlow<TriggerConfig> = _triggerConfig.asStateFlow()
+
+    fun saveTriggerConfig(config: TriggerConfig) {
+        triggerStore.save(config)
+        _triggerConfig.value = config
+        if (config.enabled) {
+            TriggerScheduler.scheduleNext(getApplication(), config)
+        } else {
+            TriggerScheduler.cancel(getApplication())
+        }
+    }
+
+    private val _tools = MutableStateFlow(toolRegistry.all())
+    val tools: StateFlow<List<Tool>> = _tools.asStateFlow()
+
+    val toolEnabledMap: StateFlow<Map<String, Boolean>> = toolStore.enabledMap
+
+    private val _toolPermissionGranted = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val toolPermissionGranted: StateFlow<Map<String, Boolean>> = _toolPermissionGranted.asStateFlow()
+
+    init {
+        refreshToolPermissions()
+    }
+
+    fun refreshToolPermissions() {
+        val context = getApplication<Application>()
+        _toolPermissionGranted.value = toolRegistry.all().associate { tool ->
+            tool.id to PermissionChecker.isGranted(context, tool.permission)
+        }
+    }
+
+    fun setToolEnabled(toolId: String, enabled: Boolean) {
+        toolStore.setEnabled(toolId, enabled)
+    }
 
     fun updateInput(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text)
@@ -70,98 +130,68 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        val intent = IntentClassifier.classify(text)
-
-        when (intent) {
-            Intent.CHAT -> handleChat(text, config)
-            Intent.AGENT -> handleAgent(text, config)
-            Intent.AMBIGUOUS -> {
-                _uiState.value = _uiState.value.copy(
-                    error = "你是想让我操作手机吗？请更明确地描述操作意图。"
-                )
-            }
-        }
+        handleAgentConversation(text, config)
     }
 
-    private fun handleChat(text: String, config: ModelConfig) {
+    private fun handleAgentConversation(text: String, config: ModelConfig) {
         val userMsg = ChatMessage.user(text)
-        val currentMessages = _uiState.value.messages + userMsg
+        val history = _uiState.value.messages + userMsg
 
         _uiState.value = _uiState.value.copy(
-            messages = currentMessages,
+            messages = history,
             inputText = "",
             isStreaming = true,
             streamingContent = "",
+            currentTrace = emptyList(),
             error = null
         )
 
         viewModelScope.launch {
             val provider = ModelRegistry.get(config)
-            val systemPrompt = ChatMessage.system(
-                "你是 AgentDroid，一个运行在 Android 设备上的智能助手。请简洁、准确地回答用户问题。"
-            )
-            val messages = listOf(systemPrompt) + currentMessages
+            val onTextDelta: (String) -> Unit = { delta ->
+                _uiState.value = _uiState.value.copy(
+                    streamingContent = _uiState.value.streamingContent + delta
+                )
+            }
+            val onTrace: (TraceStep) -> Unit = { step ->
+                _uiState.value = _uiState.value.copy(
+                    currentTrace = _uiState.value.currentTrace + step
+                )
+            }
 
             try {
-                val fullResponse = StringBuilder()
-                provider.chat(messages, config).collect { chunk ->
-                    if (chunk.startsWith("[ERROR]")) {
-                        _uiState.value = _uiState.value.copy(
-                            isStreaming = false,
-                            error = chunk.removePrefix("[ERROR] ").trim(),
-                            streamingContent = ""
-                        )
-                        return@collect
-                    }
-                    if (chunk.isEmpty()) return@collect
-                    fullResponse.append(chunk)
-                    _uiState.value = _uiState.value.copy(streamingContent = fullResponse.toString())
+                val finalText = when (_agentMode.value) {
+                    AgentMode.NATIVE_TOOLS -> AgentEngine(
+                        provider = provider,
+                        config = config,
+                        toolRegistry = toolRegistry,
+                        toolStore = toolStore,
+                        context = getApplication()
+                    ).run(history, onTextDelta, onTrace)
+                    AgentMode.PROMPT_JSON -> PromptJsonEngine(
+                        provider = provider,
+                        config = config,
+                        toolRegistry = toolRegistry,
+                        toolStore = toolStore,
+                        context = getApplication()
+                    ).run(history, onTextDelta, onTrace)
                 }
 
-                val assistantMsg = ChatMessage.assistant(fullResponse.toString())
+                val trace = _uiState.value.currentTrace.ifEmpty { null }
                 _uiState.value = _uiState.value.copy(
-                    messages = _uiState.value.messages + assistantMsg,
+                    messages = _uiState.value.messages + ChatMessage.assistant(finalText).copy(trace = trace),
                     isStreaming = false,
-                    streamingContent = ""
+                    streamingContent = "",
+                    currentTrace = emptyList()
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isStreaming = false,
                     error = e.message ?: "请求失败",
-                    streamingContent = ""
-                )
-            }
-        }
-    }
-
-    private fun handleAgent(text: String, config: ModelConfig) {
-        val userMsg = ChatMessage.user(text)
-        _uiState.value = _uiState.value.copy(
-            messages = _uiState.value.messages + userMsg,
-            inputText = "",
-            isStreaming = true,
-            streamingContent = "正在生成操作计划...",
-            error = null
-        )
-
-        viewModelScope.launch {
-            val provider = ModelRegistry.get(config)
-            val plan = taskPlanner.plan(text, provider, config)
-
-            if (plan == null) {
-                _uiState.value = _uiState.value.copy(
-                    isStreaming = false,
                     streamingContent = "",
-                    error = "无法生成操作计划，请重试或换个描述方式"
+                    currentTrace = emptyList()
                 )
-                return@launch
             }
-
-            _uiState.value = _uiState.value.copy(
-                isStreaming = false,
-                streamingContent = "",
-                pendingPlan = plan
-            )
         }
     }
 
@@ -301,4 +331,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun saveConfigs(list: List<ModelConfig>) = settings.saveConfigs(list)
     fun saveActiveConfig(id: String) = settings.saveActiveConfig(id)
     fun presets() = ModelRegistry.presets()
+
+    companion object {
+        private const val KEY_AGENT_MODE = "agent_mode"
+    }
 }

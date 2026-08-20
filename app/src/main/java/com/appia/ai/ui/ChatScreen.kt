@@ -1,5 +1,6 @@
 package com.appia.ai.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -34,11 +37,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.appia.ai.llm.ChatMessage
+import com.appia.ai.model.TraceStep
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +62,8 @@ fun ChatScreen(
         viewModel.checkOverlayPermission()
     }
 
-    LaunchedEffect(state.messages.size, state.streamingContent) {
-        if (state.messages.isNotEmpty() || state.streamingContent.isNotEmpty()) {
+    LaunchedEffect(state.messages.size, state.streamingContent, state.currentTrace.size) {
+        if (state.messages.isNotEmpty() || state.streamingContent.isNotEmpty() || state.currentTrace.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size)
         }
     }
@@ -132,9 +139,16 @@ fun ChatScreen(
                 items(state.messages) { msg ->
                     MessageBubble(msg)
                 }
-                if (state.streamingContent.isNotEmpty()) {
+                if (state.currentTrace.isNotEmpty() || state.streamingContent.isNotEmpty()) {
                     item {
-                        MessageBubble(ChatMessage.assistant(state.streamingContent))
+                        Column {
+                            if (state.currentTrace.isNotEmpty()) {
+                                TraceCard(trace = state.currentTrace, expandedDefault = true)
+                            }
+                            if (state.streamingContent.isNotEmpty()) {
+                                MessageBubble(ChatMessage.assistant(state.streamingContent))
+                            }
+                        }
                     }
                 }
                 if (state.isStreaming && state.streamingContent.isEmpty()) {
@@ -234,10 +248,13 @@ fun ChatScreen(
 @Composable
 private fun MessageBubble(message: ChatMessage) {
     val isUser = message.role == "user"
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
+        message.trace?.takeIf { it.isNotEmpty() }?.let {
+            TraceCard(trace = it, expandedDefault = false)
+        }
         Card(
             modifier = Modifier.widthIn(max = 320.dp),
             colors = CardDefaults.cardColors(
@@ -258,6 +275,64 @@ private fun MessageBubble(message: ChatMessage) {
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
+        }
+    }
+}
+
+@Composable
+private fun TraceCard(trace: List<TraceStep>, expandedDefault: Boolean) {
+    var expanded by remember { mutableStateOf(expandedDefault) }
+    Card(
+        modifier = Modifier
+            .widthIn(max = 320.dp)
+            .padding(bottom = 4.dp)
+            .clickable { expanded = !expanded },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.height(16.dp)
+                )
+                Text(
+                    "执行过程 · ${trace.size} 步",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (expanded) {
+                trace.forEach { step ->
+                    Row(
+                        modifier = Modifier.padding(top = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            if (step.success) "✓" else "✗",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (step.success) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                        Column {
+                            Text(step.title, style = MaterialTheme.typography.labelSmall)
+                            if (step.detail.isNotEmpty()) {
+                                Text(
+                                    step.detail,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

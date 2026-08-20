@@ -1,5 +1,6 @@
 package com.appia.ai.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -36,12 +38,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.appia.ai.agent.AgentMode
 import com.appia.ai.llm.ModelConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToTools: () -> Unit,
+    onNavigateToTrigger: () -> Unit,
     viewModel: ChatViewModel
 ) {
     val configs by viewModel.configs.collectAsState()
@@ -87,6 +92,13 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                androidx.compose.material3.TextButton(onClick = onNavigateToTools) {
+                    Text("工具权限管理 →")
+                }
+                androidx.compose.material3.TextButton(onClick = onNavigateToTrigger) {
+                    Text("主动提醒 →")
+                }
+                AgentModeCard(viewModel)
                 PresetButtons(
                     onAddPreset = { preset ->
                         val newConfig = preset.copy(providerId = "config_${System.currentTimeMillis()}")
@@ -103,6 +115,19 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
             ) {
+                item {
+                    AgentModeCard(viewModel)
+                }
+                item {
+                    androidx.compose.material3.TextButton(onClick = onNavigateToTools) {
+                        Text("工具权限管理 →")
+                    }
+                }
+                item {
+                    androidx.compose.material3.TextButton(onClick = onNavigateToTrigger) {
+                        Text("主动提醒 →")
+                    }
+                }
                 items(configs, key = { it.providerId }) { config ->
                     ConfigCard(
                         config = config,
@@ -127,6 +152,43 @@ fun SettingsScreen(
                             viewModel.saveConfigs(configs + newConfig)
                         }
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentModeCard(viewModel: ChatViewModel) {
+    val current by viewModel.agentMode.collectAsState()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Agent 工具调用模式", style = MaterialTheme.typography.titleSmall)
+            AgentMode.entries.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setAgentMode(mode) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = current == mode,
+                        onClick = { viewModel.setAgentMode(mode) }
+                    )
+                    Column(modifier = Modifier.padding(start = 8.dp)) {
+                        Text(mode.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            mode.description,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

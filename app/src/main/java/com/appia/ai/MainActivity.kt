@@ -16,6 +16,8 @@ import com.appia.ai.ui.ChatScreen
 import com.appia.ai.ui.ChatViewModel
 import com.appia.ai.ui.PermissionGuideScreen
 import com.appia.ai.ui.SettingsScreen
+import com.appia.ai.ui.ToolPermissionsScreen
+import com.appia.ai.ui.TriggerScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +45,20 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("settings") {
                             SettingsScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onNavigateToTools = { navController.navigate("tools") },
+                                onNavigateToTrigger = { navController.navigate("trigger") },
+                                viewModel = viewModel
+                            )
+                        }
+                        composable("tools") {
+                            ToolPermissionsScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                viewModel = viewModel
+                            )
+                        }
+                        composable("trigger") {
+                            TriggerScreen(
                                 onNavigateBack = { navController.popBackStack() },
                                 viewModel = viewModel
                             )
