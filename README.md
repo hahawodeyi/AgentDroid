@@ -67,6 +67,7 @@ app/src/main/java/com/appia/ai/
 | save_memory / recall_memory / forget_memory | 长期记忆读写删 | 无 |
 | read_screen | 读取当前屏幕 UI 元素 | 无障碍 |
 | screen_action | 点击/输入/滚动/返回等屏幕操作 | 无障碍 |
+| send_appia_message | 通过 Appia（Rocket.Chat）发送私聊/群消息 | 无 |
 
 每个工具可在「设置 → 工具权限管理」独立开关；agent 调到未授权工具时会以普通回复引导用户去开启，不会静默失败。屏幕操作涉及支付、发消息、删除等不可逆动作前，agent 会先向用户确认。
 
@@ -103,3 +104,4 @@ agent 会通过 save_memory 主动记住用户偏好，长期记忆注入 system
 4. 返回对话页面开始聊天
 5. 试试：「明天早上 8 点叫我起床」「给我发条通知说该喝水了」「记住我喜欢喝冰美式」
 6. 想体验屏幕操作：设置 → 工具权限管理 → 为「读取屏幕 / 屏幕操作」开启无障碍服务
+7. 联动 Appia：设置 → Appia 连接，填入服务器地址、用户 ID 和访问令牌（Appia 网页端 个人设置 → 个人访问令牌 创建），然后对 agent 说「给 @某某 发条 Appia 消息说……」

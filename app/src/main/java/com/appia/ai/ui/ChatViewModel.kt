@@ -14,6 +14,8 @@ import kotlinx.coroutines.CompletableDeferred
 import com.appia.ai.agent.ExecutionLoop
 import com.appia.ai.agent.ExecutionResult
 import com.appia.ai.agent.ExecutionStatus
+import com.appia.ai.appia.AppiaConfig
+import com.appia.ai.appia.AppiaConfigStore
 import com.appia.ai.data.SettingsRepository
 import com.appia.ai.llm.ChatMessage
 import com.appia.ai.llm.ModelConfig
@@ -91,6 +93,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             TriggerScheduler.cancel(getApplication())
         }
+    }
+
+    private val appiaStore = AppiaConfigStore(app)
+
+    private val _appiaConfig = MutableStateFlow(appiaStore.load())
+    val appiaConfig: StateFlow<AppiaConfig> = _appiaConfig.asStateFlow()
+
+    fun saveAppiaConfig(config: AppiaConfig) {
+        appiaStore.save(config)
+        _appiaConfig.value = appiaStore.load()
     }
 
     private val _tools = MutableStateFlow(toolRegistry.all())

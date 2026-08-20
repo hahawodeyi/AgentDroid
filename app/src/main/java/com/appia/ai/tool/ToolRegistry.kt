@@ -20,7 +20,8 @@ class ToolRegistry(tools: List<Tool>) {
                 RecallMemoryTool(),
                 ForgetMemoryTool(),
                 ReadScreenTool(),
-                ScreenActionTool()
+                ScreenActionTool(),
+                SendAppiaMessageTool()
             )
         )
     }

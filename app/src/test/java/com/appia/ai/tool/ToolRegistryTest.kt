@@ -50,6 +50,7 @@ class ToolRegistryTest {
         assertNotNull(registry.find("forget_memory"))
         assertNotNull(registry.find("read_screen"))
         assertNotNull(registry.find("screen_action"))
+        assertNotNull(registry.find("send_appia_message"))
     }
 
     @Test

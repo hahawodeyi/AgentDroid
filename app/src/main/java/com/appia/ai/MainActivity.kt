@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.appia.ai.ui.ChatScreen
+import com.appia.ai.ui.AppiaSettingsScreen
 import com.appia.ai.ui.ChatViewModel
 import com.appia.ai.ui.PermissionGuideScreen
 import com.appia.ai.ui.SettingsScreen
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { navController.popBackStack() },
                                 onNavigateToTools = { navController.navigate("tools") },
                                 onNavigateToTrigger = { navController.navigate("trigger") },
+                                onNavigateToAppia = { navController.navigate("appia") },
                                 viewModel = viewModel
                             )
                         }
@@ -59,6 +61,12 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("trigger") {
                             TriggerScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                viewModel = viewModel
+                            )
+                        }
+                        composable("appia") {
+                            AppiaSettingsScreen(
                                 onNavigateBack = { navController.popBackStack() },
                                 viewModel = viewModel
                             )

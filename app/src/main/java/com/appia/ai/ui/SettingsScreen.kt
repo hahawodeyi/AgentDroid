@@ -47,6 +47,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToTools: () -> Unit,
     onNavigateToTrigger: () -> Unit,
+    onNavigateToAppia: () -> Unit,
     viewModel: ChatViewModel
 ) {
     val configs by viewModel.configs.collectAsState()
@@ -98,6 +99,9 @@ fun SettingsScreen(
                 androidx.compose.material3.TextButton(onClick = onNavigateToTrigger) {
                     Text("主动提醒 →")
                 }
+                androidx.compose.material3.TextButton(onClick = onNavigateToAppia) {
+                    Text("Appia 连接 →")
+                }
                 AgentModeCard(viewModel)
                 PresetButtons(
                     onAddPreset = { preset ->
@@ -126,6 +130,11 @@ fun SettingsScreen(
                 item {
                     androidx.compose.material3.TextButton(onClick = onNavigateToTrigger) {
                         Text("主动提醒 →")
+                    }
+                }
+                item {
+                    androidx.compose.material3.TextButton(onClick = onNavigateToAppia) {
+                        Text("Appia 连接 →")
                     }
                 }
                 items(configs, key = { it.providerId }) { config ->
