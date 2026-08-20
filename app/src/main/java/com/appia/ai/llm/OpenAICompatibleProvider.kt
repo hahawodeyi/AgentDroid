@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -32,6 +32,14 @@ class OpenAICompatibleProvider : LLMProvider {
     override val displayName = "OpenAI Compatible"
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    private fun Exception.toUserMessage(): String = when (this) {
+        is java.net.UnknownHostException -> "无法解析服务器地址，请检查 Base URL 是否正确、设备是否联网"
+        is java.net.ConnectException -> "无法连接到服务器，请检查 Base URL 和网络"
+        is java.net.SocketTimeoutException -> "连接服务器超时，请稍后重试"
+        is javax.net.ssl.SSLException -> "HTTPS 证书校验失败：${message ?: "请检查服务器证书"}"
+        else -> message ?: "${javaClass.simpleName}（请检查网络和 Base URL 配置）"
+    }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -111,12 +119,12 @@ class OpenAICompatibleProvider : LLMProvider {
                 response.close()
                 channel.close()
             } catch (e: Exception) {
-                trySend("[ERROR] 网络请求失败: ${e.message ?: "Unknown"}")
+                trySend("[ERROR] 网络请求失败: ${e.toUserMessage()}")
                 channel.close()
             }
 
             awaitClose { }
-        }
+        }.flowOn(Dispatchers.IO)
 
     override suspend fun chatWithTools(
         messages: List<ChatMessage>,
@@ -193,12 +201,12 @@ class OpenAICompatibleProvider : LLMProvider {
             response.close()
             channel.close()
         } catch (e: Exception) {
-            trySend(ChatEvent.Error("网络请求失败: ${e.message ?: "Unknown"}"))
+            trySend(ChatEvent.Error("网络请求失败: ${e.toUserMessage()}"))
             channel.close()
         }
 
         awaitClose { }
-    }
+    }.flowOn(Dispatchers.IO)
 
     private class ToolCallAccumulator {
         var id: String = ""
