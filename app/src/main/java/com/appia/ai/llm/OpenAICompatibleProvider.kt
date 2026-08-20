@@ -9,7 +9,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -225,7 +224,7 @@ class OpenAICompatibleProvider : LLMProvider {
                 add(buildJsonObject {
                     put("role", JsonPrimitive(msg.role))
                     if (msg.toolCalls != null) {
-                        put("content", if (msg.content.isEmpty()) JsonNull else JsonPrimitive(msg.content))
+                        put("content", JsonPrimitive(msg.content))
                         putJsonArray("tool_calls") {
                             msg.toolCalls.forEach { tc ->
                                 add(buildJsonObject {
