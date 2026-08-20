@@ -21,7 +21,8 @@ class ToolRegistry(tools: List<Tool>) {
                 ForgetMemoryTool(),
                 ReadScreenTool(),
                 ScreenActionTool(),
-                SendAppiaMessageTool()
+                SendAppiaMessageTool(),
+                ReadAppiaMessagesTool()
             )
         )
     }

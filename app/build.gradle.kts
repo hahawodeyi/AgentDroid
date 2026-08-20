@@ -71,5 +71,6 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
+    testImplementation(libs.mockwebserver)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }
