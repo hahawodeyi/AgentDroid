@@ -110,6 +110,22 @@ class AgentEngineTest {
     }
 
     @Test
+    fun `text emitted before tool call is not kept as final answer`() = runTest {
+        val tool = RecordingTool()
+        val provider = FakeProvider(listOf(
+            listOf(
+                ChatEvent.TextDelta("发送消息失败"),
+                ChatEvent.ToolCallsReady(listOf(ToolCall("c1", "fake_tool", "{}")))
+            ),
+            listOf(ChatEvent.TextDelta("已发送"))
+        ))
+
+        val result = engine(provider, listOf(tool)).run(emptyList(), {}, {})
+
+        assertEquals("已发送", result)
+    }
+
+    @Test
     fun `permission required produces trace and asks user to grant`() = runTest {
         val permission = ToolPermission("android.permission.POST_NOTIFICATIONS", "通知权限", "发通知", true)
         val tool = RecordingTool(result = ToolResult.PermissionRequired(permission))

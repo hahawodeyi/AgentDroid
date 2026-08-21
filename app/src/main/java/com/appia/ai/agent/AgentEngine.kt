@@ -56,7 +56,6 @@ class AgentEngine(
                 return finalText.toString()
             }
 
-            finalText.append(turnText)
             messages.add(ChatMessage.assistantWithToolCalls(pendingCalls, turnText.toString()))
 
             pendingCalls.forEach { call ->
@@ -88,7 +87,7 @@ class AgentEngine(
 
 规则：
 1. 当用户的请求可以通过工具完成时，调用相应工具，不要凭空编造执行结果
-2. 工具执行后，根据工具返回的结果用简洁的中文告知用户
+2. 工具执行后，工具返回结果是唯一事实来源；必须严格根据最新工具结果用简洁的中文告知用户，不要沿用之前轮次的错误结论
 3. 如果工具返回"需要权限"或"已被关闭"的信息，直接转告用户如何开启（设置 → 工具权限管理）
 4. 普通聊天问题直接回答，不要强行使用工具
 5. 一次回复中可以调用多个工具；如果任务需要多步，先调用当前能确定的工具，等结果返回后再继续

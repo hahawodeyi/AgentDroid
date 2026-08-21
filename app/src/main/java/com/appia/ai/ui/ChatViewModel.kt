@@ -167,7 +167,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
             val onTrace: (TraceStep) -> Unit = { step ->
                 _uiState.value = _uiState.value.copy(
-                    currentTrace = _uiState.value.currentTrace + step
+                    currentTrace = _uiState.value.currentTrace + step,
+                    streamingContent = ""
                 )
             }
 
