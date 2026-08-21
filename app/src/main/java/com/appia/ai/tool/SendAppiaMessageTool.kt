@@ -56,7 +56,7 @@ class SendAppiaMessageTool : Tool {
             AppiaClient(config).sendMessage(target, text)
             ToolResult.Success("已发送 Appia 消息给 $target")
         } catch (e: AppiaClient.ApiException) {
-            ToolResult.Failure("Appia 发送失败：${e.message}")
+            ToolResult.Failure("Appia 发送失败：${AppiaClient.friendlyApiError(e.message ?: "")}")
         } catch (e: Exception) {
             ToolResult.Failure("Appia 网络请求失败：${e.message}")
         }

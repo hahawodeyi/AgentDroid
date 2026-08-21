@@ -89,7 +89,10 @@ fun AppiaSettingsScreen(
                     OutlinedTextField(
                         value = userId,
                         onValueChange = { userId = it },
-                        label = { Text("用户 ID（X-User-Id）") },
+                        label = { Text("Rocket.Chat 用户 ID（X-User-Id）") },
+                        supportingText = {
+                            Text("填个人访问令牌页面显示的 User ID，不是登录用户名")
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -97,6 +100,7 @@ fun AppiaSettingsScreen(
                         value = authToken,
                         onValueChange = { authToken = it },
                         label = { Text("访问令牌（X-Auth-Token）") },
+                        supportingText = { Text("必须与上方 User ID 同一组生成") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth()

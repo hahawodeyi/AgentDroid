@@ -59,7 +59,7 @@ class ReadAppiaMessagesTool : Tool {
                 ToolResult.Success(format(result))
             }
         } catch (e: AppiaClient.ApiException) {
-            ToolResult.Failure("Appia 读取失败：${e.message}")
+            ToolResult.Failure("Appia 读取失败：${AppiaClient.friendlyApiError(e.message ?: "")}")
         } catch (e: Exception) {
             ToolResult.Failure("Appia 网络请求失败：${e.message}")
         }

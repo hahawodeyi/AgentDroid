@@ -170,5 +170,15 @@ class AppiaClient(
                 body.take(200)
             }
         }
+
+        internal fun friendlyApiError(message: String): String {
+            val unauthorized = message.contains("HTTP 401") ||
+                message.contains("You must be logged in", ignoreCase = true)
+            return if (unauthorized) {
+                "鉴权失败：X-User-Id 必须填个人访问令牌页面显示的 User ID（不是登录用户名），并确认令牌完整且未删除"
+            } else {
+                message
+            }
+        }
     }
 }

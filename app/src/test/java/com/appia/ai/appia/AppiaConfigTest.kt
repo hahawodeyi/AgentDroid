@@ -38,4 +38,10 @@ class AppiaConfigTest {
         assertEquals("", AppiaClient.extractError(""))
         assertEquals("<html>502</html>", AppiaClient.extractError("<html>502</html>"))
     }
+
+    @Test
+    fun `friendlyApiError explains user id mismatch`() {
+        val message = AppiaClient.friendlyApiError("HTTP 401: You must be logged in to do this.")
+        assertEquals("鉴权失败：X-User-Id 必须填个人访问令牌页面显示的 User ID（不是登录用户名），并确认令牌完整且未删除", message)
+    }
 }
