@@ -46,7 +46,15 @@ class OpenAppTool : Tool {
         }
 
         if (match == null) {
-            return ToolResult.Failure("未找到名为「$appName」的应用")
+            val available = activities
+                .map { it.loadLabel(pm).toString() }
+                .distinct()
+                .sorted()
+                .take(40)
+            return ToolResult.Failure(
+                "未找到名为「$appName」的应用。当前可见的应用有：${available.joinToString("、")}" +
+                    "。请从这些应用中选择用户想要的（名称可能不完全一致），然后用准确名称重试。"
+            )
         }
 
         val launchIntent = pm.getLaunchIntentForPackage(match.activityInfo.packageName)?.apply {
